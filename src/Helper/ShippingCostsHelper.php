@@ -61,6 +61,10 @@ class ShippingCostsHelper
      */
     public function getShippingCosts(array $variation, KeyValue $settings){
 
+        $this->getLogger('getShippingCosts')
+            ->addReference('Variation', (int)$variation['id'])
+            ->error('ElasticExportGoogleShopping::Debug.getShippingCostsStart');
+
         $webstore = $this->webstoreRepositoryContract->findByPlentyId($settings->get('plentyId'));
         $country = $this->countryRepositoryContract->getCountryById($settings->get('destination'));
         $shippingCosts = 0;
@@ -73,21 +77,36 @@ class ShippingCostsHelper
 
             $this->getLogger('getShippingCosts')
                 ->addReference('Variation', (int)$variation['id'])
-                ->error('ElasticExportGoogleShopping::getShippingCosts', [
-                    'parcelServicePreset' => $parcelServicePreset,
-                ]);
+                ->error('ElasticExportGoogleShopping::Debug.parcelServicePreset', $parcelServicePreset);
 
             if(in_array($webstore->id, $parcelServicePreset->supportedMultishop) || in_array('-1', $parcelServicePreset->supportedMultishop)){
 
+                $this->getLogger('getShippingCosts')
+                    ->addReference('Variation', (int)$variation['id'])
+                    ->error('ElasticExportGoogleShopping::Debug.supportedMultishop');
+
                 $parcelServiceRegionConstraints = Collection::make($parcelServicePreset->parcelServiceRegionConstraint)->firstWhere('shippingRegionId', $country->shippingDestinationId);
 
+                $this->getLogger('getShippingCosts')
+                    ->addReference('Variation', (int)$variation['id'])
+                    ->error('ElasticExportGoogleShopping::Debug.parcelServiceRegionConstraints', $parcelServiceRegionConstraints);
+
                 foreach($parcelServiceRegionConstraints->constraint as $constraint){
+                    $this->getLogger('getShippingCosts')
+                        ->addReference('Variation', (int)$variation['id'])
+                        ->error('ElasticExportGoogleShopping::Debug.constraint', [
+                            'startValue' => $constraint->startValue,
+                            'weightG' => $variation['data']['variation']['weightG'],
+                            'result' => $constraint->startValue < $variation['data']['variation']['weightG'],
+                            'shippingCosts' => $shippingCosts,
+                            'constraint->cost' => $constraint->cost
+                        ]);
+
                     if($constraint->startValue < $variation['data']['variation']['weightG']){
                         if($shippingCosts < $constraint->cost){
                             $shippingCosts = $constraint->cost;
                         }
                     }
-
                 }
             }
         }
@@ -95,7 +114,7 @@ class ShippingCostsHelper
 
         $this->getLogger('getShippingCosts')
             ->addReference('Variation', (int)$variation['id'])
-            ->error('ElasticExportGoogleShopping::getShippingCosts', [
+            ->error('ElasticExportGoogleShopping::Debug.getShippingCosts', [
             'shippingCosts' => $shippingCosts,
         ]);
 
