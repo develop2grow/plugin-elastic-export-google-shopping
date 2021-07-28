@@ -10,6 +10,8 @@ use ElasticExport\Services\FiltrationService;
 use ElasticExport\Services\PriceDetectionService;
 use ElasticExportGoogleShopping\Helper\AttributeHelper;
 use ElasticExportGoogleShopping\Helper\PriceHelper;
+use ElasticExportGoogleShopping\Helper\SalesPriceHelper;
+use ElasticExportGoogleShopping\Helper\ShippingCostsHelper;
 use Plenty\Legacy\Services\Item\Variation\DetectSalesPriceService;
 use Plenty\Modules\DataExchange\Contracts\CSVPluginGenerator;
 use Plenty\Modules\Helper\Services\ArrayHelper;
@@ -78,6 +80,16 @@ class GoogleShopping extends CSVPluginGenerator
     private $priceHelper;
 
     /**
+     * @var SalesPriceHelper $salesPriceHelper
+     */
+    private $salesPriceHelper;
+
+    /**
+     * @var ShippingCostsHelper $shippingCostsHelper
+     */
+    private $shippingCostsHelper;
+
+    /**
 	 * @var ElasticExportStockHelper $elasticExportStockHelper
 	 */
 	private $elasticExportStockHelper;
@@ -133,6 +145,8 @@ class GoogleShopping extends CSVPluginGenerator
      * @param ArrayHelper $arrayHelper
      * @param AttributeHelper $attributeHelper
      * @param PriceHelper $priceHelper
+     * @param SalesPriceHelper $salesPriceHelper
+     * @param ShippingCostsHelper $shippingCostsHelper
      * @param ImageHelper $imageHelper
      * @param VariationExportServiceContract $variationExportService
      */
@@ -140,6 +154,8 @@ class GoogleShopping extends CSVPluginGenerator
         ArrayHelper $arrayHelper,
         AttributeHelper $attributeHelper,
         PriceHelper $priceHelper,
+        SalesPriceHelper $salesPriceHelper,
+        ShippingCostsHelper $shippingCostsHelper,
 		ImageHelper $imageHelper,
         VariationExportServiceContract $variationExportService
 	)
@@ -147,6 +163,8 @@ class GoogleShopping extends CSVPluginGenerator
         $this->arrayHelper = $arrayHelper;
         $this->attributeHelper = $attributeHelper;
         $this->priceHelper = $priceHelper;
+        $this->salesPriceHelper = $salesPriceHelper;
+        $this->shippingCostsHelper = $shippingCostsHelper;
 		$this->imageHelper = $imageHelper;
 		$this->variationExportService = $variationExportService;
 	}
@@ -293,50 +311,15 @@ class GoogleShopping extends CSVPluginGenerator
     {
         $variationAttributes = $this->attributeHelper->getVariationAttributes($variation, $settings);
 
-        $preloadedPrices = (array)$this->variationExportService->getData('VariationSalesPrice', $variation['id']);
-        
-        $salesPriceData = $this->priceDetectionService->getPriceByPreloadList($preloadedPrices, PriceDetectionService::SALES_PRICE);
-        
-        if($salesPriceData['price'] > 0) {
-        	$variationPrice = $this->elasticExportPriceHelper->convertPrice($salesPriceData['price'], $this->priceDetectionService->getCurrency(), $settings, 2, '.');
-            $variationPrice = $variationPrice . ' ' . $this->priceDetectionService->getCurrency();
-        } else {
-            $variationPrice = '';
-        }
+        $variationPrice = $this->salesPriceHelper->getPrice($variation, $settings);
+        $salePrice = $this->salesPriceHelper->getSalePrice($variation, $settings);
 
-        $specialPriceData = $this->priceDetectionService->getPriceByPreloadList($preloadedPrices, PriceDetectionService::SPECIAL_PRICE);
-        
-        if($specialPriceData['price'] > 0) {
-			$salePrice = $this->elasticExportPriceHelper->convertPrice($specialPriceData['price'], $this->priceDetectionService->getCurrency(), $settings, 2, '.');
-        } else {
-            $salePrice = '';
-        }
-            
-        // FIXME non save condition handling
         if($salePrice >= $variationPrice || $salePrice <= 0.00)
         {
         	$salePrice = '';
 		}
 
-        $shippingCost = $this->elasticExportHelper->getShippingCost($variation['data']['item']['id'], $settings);
-
-        if(!is_null($shippingCost))
-        {
-            $shippingCost = number_format((float)$shippingCost, 2, '.', '').' '. $this->priceDetectionService->getCurrency();
-        }
-        else
-        {
-            $shippingCost = '';
-        }
-
-        if(strlen($shippingCost) == 0)
-        {
-            $shipping = '';
-        }
-        else
-        {
-            $shipping = $this->elasticExportHelper->getCountry($settings, self::ISO_CODE_2).':::'.$shippingCost;
-        }
+        $shipping = $this->shippingCostsHelper->getShippingCosts($variation, $settings);
 
         $basePriceComponents = $this->priceHelper->getBasePriceComponents($variation);
 
