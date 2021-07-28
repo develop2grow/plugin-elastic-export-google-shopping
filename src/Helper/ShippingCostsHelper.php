@@ -14,7 +14,7 @@ use Plenty\Plugin\Log\Loggable;
 class ShippingCostsHelper
 {
     use Loggable;
-    
+
     /**
      * @var ParcelServicePresetRepositoryContract
      */
@@ -71,6 +71,12 @@ class ShippingCostsHelper
         foreach($itemShippingProfiles as $itemShippingProfile){
             $parcelServicePreset = $this->parcelServicePresetRepositoryContract->getPresetById($itemShippingProfile->profileId);
 
+            $this->getLogger('getShippingCosts')
+                ->addReference('Variation', (int)$variation['id'])
+                ->error('ElasticExportGoogleShopping::getShippingCosts', [
+                    'parcelServicePreset' => $parcelServicePreset,
+                ]);
+
             if(in_array($webstore->id, $parcelServicePreset->supportedMultishop) || in_array('-1', $parcelServicePreset->supportedMultishop)){
 
                 $parcelServiceRegionConstraints = Collection::make($parcelServicePreset->parcelServiceRegionConstraint)->firstWhere('shippingRegionId', $country->shippingDestinationId);
@@ -89,7 +95,7 @@ class ShippingCostsHelper
 
         $this->getLogger('getShippingCosts')
             ->addReference('Variation', (int)$variation['id'])
-            ->debug('ElasticExportGoogleShopping::getShippingCosts', [
+            ->error('ElasticExportGoogleShopping::getShippingCosts', [
             'shippingCosts' => $shippingCosts,
         ]);
 
