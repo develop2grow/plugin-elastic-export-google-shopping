@@ -87,7 +87,7 @@ class ShippingCostsHelper
 
                     $this->getLogger('getShippingCosts')
                         ->addReference('variationId', (int)$variation['id'])
-                        ->error('ElasticExportGoogleShopping::Debug.constraint', [
+                        ->debug('ElasticExportGoogleShopping::Debug.constraint', [
                             'startValue' => $constraint['startValue'],
                             'weightG' => $variation['data']['variation']['weightG'],
                             'result' => $constraint['startValue'] < $variation['data']['variation']['weightG'],
