@@ -41,7 +41,9 @@ class ShippingCostsHelper
             self::PAYMENT_METHOD_ID
         );
 
-        $this->getLogger('ElasticExportGoogleShopping')->debug('ElasticExportGoogleShopping::getShippingCosts', [
+        $this->getLogger('getShippingCosts')
+            ->addReference('Variation', (int)$variation['id'])
+            ->error('ElasticExportGoogleShopping::getShippingCosts', [
             'shippingCosts' => $shippingCosts,
             'variationId' => $variation['data']['item']['id'],
             'referrerId' => $settings->get('referrerId'),
