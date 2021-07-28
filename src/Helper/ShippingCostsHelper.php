@@ -99,10 +99,11 @@ class ShippingCostsHelper
                             'weightG' => $variation['data']['variation']['weightG'],
                             'result' => $constraint->startValue < $variation['data']['variation']['weightG'],
                             'shippingCosts' => $shippingCosts,
-                            'constraint->cost' => $constraint->cost
+                            'cost' => $constraint->cost,
+                            'constraint' => $constraint
                         ]);
 
-                    if($constraint->startValue < $variation['data']['variation']['weightG']){
+                    if($constraint->startValue > $variation['data']['variation']['weightG']){
                         if($shippingCosts < $constraint->cost){
                             $shippingCosts = $constraint->cost;
                         }
