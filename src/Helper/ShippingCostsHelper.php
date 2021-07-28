@@ -86,7 +86,7 @@ class ShippingCostsHelper
                     }
 
                     $this->getLogger('getShippingCosts')
-                        ->addReference('Variation', $variation['id'])
+                        ->addReference('variationId', (int)$variation['id'])
                         ->error('ElasticExportGoogleShopping::Debug.constraint', [
                             'startValue' => $constraint['startValue'],
                             'weightG' => $variation['data']['variation']['weightG'],
@@ -97,7 +97,7 @@ class ShippingCostsHelper
                         ]);
 
                     if($constraint['startValue'] > $variation['data']['variation']['weightG']){
-                        if($shippingCosts > $constraint['cost']){
+                        if($shippingCosts > $constraint['cost'] || $shippingCosts == 0){
                             $shippingCosts = $constraint['cost'];
                         }
                     }
@@ -110,7 +110,7 @@ class ShippingCostsHelper
 
         $shippingCosts = Collection::make($shippingCostsArray)->sort()->first();
         $this->getLogger('getShippingCosts')
-            ->addReference('Variation', (int)$variation['id'])
+            ->addReference('variationId', (int)$variation['id'])
             ->error('ElasticExportGoogleShopping::Debug.getShippingCosts', [
                 'shippingCosts' => $shippingCosts,
                 'shippingCostsArray' => $shippingCostsArray,
