@@ -64,12 +64,14 @@ class ShippingCostsHelper
 
         $webstore = $this->webstoreRepositoryContract->findByPlentyId($settings->get('plentyId'));
         $country = $this->countryRepositoryContract->getCountryById($settings->get('destination'));
-        $shippingCosts = 0;
+        $shippingCostsArray = [];
 
         $itemShippingProfiles = $this->itemShippingProfilesRepositoryContract->findByItemId($variation['data']['item']['id']);
 
         /** @var ItemShippingProfiles $itemShippingProfile */
         foreach($itemShippingProfiles as $itemShippingProfile){
+            $shippingCosts = 0;
+
             $parcelServicePreset = $this->parcelServicePresetRepositoryContract->getPresetById($itemShippingProfile->profileId);
 
             if(in_array($webstore->id, $parcelServicePreset->supportedMultishop) || in_array('-1', $parcelServicePreset->supportedMultishop)){
@@ -95,20 +97,24 @@ class ShippingCostsHelper
                         ]);
 
                     if($constraint['startValue'] > $variation['data']['variation']['weightG']){
-                        if($shippingCosts < $constraint['cost']){
+                        if($shippingCosts > $constraint['cost']){
                             $shippingCosts = $constraint['cost'];
                         }
                     }
                 }
             }
+
+            $shippingCostsArray[] = $shippingCosts;
         }
 
 
+        $shippingCosts = Collection::make($shippingCostsArray)->sort()->first();
         $this->getLogger('getShippingCosts')
             ->addReference('Variation', (int)$variation['id'])
             ->error('ElasticExportGoogleShopping::Debug.getShippingCosts', [
                 'shippingCosts' => $shippingCosts,
-                '$variation' => $variation
+                'shippingCostsArray' => $shippingCostsArray,
+                'variation' => $variation
         ]);
 
         return $shippingCosts;
