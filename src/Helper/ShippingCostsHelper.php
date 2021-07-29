@@ -2,14 +2,9 @@
 
 namespace ElasticExportGoogleShopping\Helper;
 
-use Illuminate\Support\Collection;
 use Plenty\Modules\Helper\Models\KeyValue;
-use Plenty\Modules\Item\ItemShippingProfiles\Contracts\ItemShippingProfilesRepositoryContract;
-use Plenty\Modules\Item\ItemShippingProfiles\Models\ItemShippingProfiles;
-use Plenty\Modules\Order\Shipping\Contracts\ParcelServicePresetRepositoryContract;
 use Plenty\Modules\Order\Shipping\Countries\Contracts\CountryRepositoryContract;
-use Plenty\Modules\Order\Shipping\ParcelService\Models\ParcelServiceConstraint;
-use Plenty\Modules\System\Contracts\WebstoreRepositoryContract;
+use Plenty\Modules\Property\V2\Contracts\PropertyRelationRepositoryContract;
 use Plenty\Plugin\Log\Loggable;
 
 class ShippingCostsHelper
@@ -17,43 +12,28 @@ class ShippingCostsHelper
     use Loggable;
 
     /**
-     * @var ParcelServicePresetRepositoryContract
-     */
-    private $parcelServicePresetRepositoryContract;
-
-    /**
-     * @var ItemShippingProfilesRepositoryContract
-     */
-    private $itemShippingProfilesRepositoryContract;
-
-    /**
-     * @var WebstoreRepositoryContract
-     */
-    private $webstoreRepositoryContract;
-
-    /**
      * @var CountryRepositoryContract
      */
     private $countryRepositoryContract;
 
     /**
+     * @var PropertyRelationRepositoryContract
+     */
+    private $propertyRelationRepositoryContract;
+
+
+    /**
      * PriceHelper constructor.
-     * @param ParcelServicePresetRepositoryContract $parcelServicePresetRepositoryContract
-     * @param ItemShippingProfilesRepositoryContract $itemShippingProfilesRepositoryContract
-     * @param WebstoreRepositoryContract $webstoreRepositoryContract
      * @param CountryRepositoryContract $countryRepositoryContract
+     * @param PropertyRelationRepositoryContract $propertyRelationRepositoryContract
      */
     public function __construct(
-        ParcelServicePresetRepositoryContract $parcelServicePresetRepositoryContract,
-        ItemShippingProfilesRepositoryContract $itemShippingProfilesRepositoryContract,
-        WebstoreRepositoryContract $webstoreRepositoryContract,
-        CountryRepositoryContract $countryRepositoryContract
+        CountryRepositoryContract $countryRepositoryContract,
+        PropertyRelationRepositoryContract $propertyRelationRepositoryContract
     )
     {
-        $this->parcelServicePresetRepositoryContract = $parcelServicePresetRepositoryContract;
-        $this->itemShippingProfilesRepositoryContract = $itemShippingProfilesRepositoryContract;
-        $this->webstoreRepositoryContract = $webstoreRepositoryContract;
         $this->countryRepositoryContract = $countryRepositoryContract;
+        $this->propertyRelationRepositoryContract = $propertyRelationRepositoryContract;
     }
 
     /**
@@ -62,60 +42,42 @@ class ShippingCostsHelper
      */
     public function getShippingCosts(array $variation, KeyValue $settings){
 
-        $webstore = $this->webstoreRepositoryContract->findByPlentyId($settings->get('plentyId'));
+        $shippingCosts = 0;
+
         $country = $this->countryRepositoryContract->getCountryById($settings->get('destination'));
-        $shippingCostsArray = [];
+        $propertyID = 0;
 
-        $itemShippingProfiles = $this->itemShippingProfilesRepositoryContract->findByItemId($variation['data']['item']['id']);
+        if($country->shippingDestinationId == 1){ // EU
+            $propertyID = 6;
 
-        /** @var ItemShippingProfiles $itemShippingProfile */
-        foreach($itemShippingProfiles as $itemShippingProfile){
-            $shippingCosts = 0;
+        } elseif($country->shippingDestinationId == 2){ // DE
+            $propertyID = 5;
 
-            $parcelServicePreset = $this->parcelServicePresetRepositoryContract->getPresetById($itemShippingProfile->profileId);
+        } elseif($country->shippingDestinationId == 3){ // Europa
+            $propertyID = 7;
 
-            if(in_array($webstore->id, $parcelServicePreset->supportedMultishop) || in_array('-1', $parcelServicePreset->supportedMultishop)){
+        } elseif($country->shippingDestinationId == 4){ // Welt
+            $propertyID = 8;
 
-                $parcelServiceRegionConstraints = Collection::make($parcelServicePreset->parcelServiceRegionConstraint)->firstWhere('shippingRegionId', $country->shippingDestinationId);
-
-                /** @var ParcelServiceConstraint $constraint */
-                foreach($parcelServiceRegionConstraints->constraint as $constraint){
-
-                    if(!is_array($constraint)){
-                        $constraint = $constraint->toArray();
-                    }
-
-                    $this->getLogger('getShippingCosts')
-                        ->addReference('variationId', (int)$variation['id'])
-                        ->debug('ElasticExportGoogleShopping::Debug.constraint', [
-                            'startValue' => $constraint['startValue'],
-                            'weightG' => $variation['data']['variation']['weightG'],
-                            'result' => $constraint['startValue'] < $variation['data']['variation']['weightG'],
-                            'shippingCosts' => $shippingCosts,
-                            'cost' => $constraint['cost'],
-                            'constraint' => $constraint
-                        ]);
-
-                    if($constraint['startValue'] > $variation['data']['variation']['weightG']){
-                        if($shippingCosts > $constraint['cost'] || $shippingCosts == 0){
-                            $shippingCosts = $constraint['cost'];
-                        }
-                    }
-                }
-            }
-
-            $shippingCostsArray[] = $shippingCosts;
         }
 
+        if($propertyID > 0){
 
-        $shippingCosts = Collection::make($shippingCostsArray)->sort()->first();
-        $this->getLogger('getShippingCosts')
-            ->addReference('variationId', (int)$variation['id'])
-            ->error('ElasticExportGoogleShopping::Debug.getShippingCosts', [
-                'shippingCosts' => $shippingCosts,
-                'shippingCostsArray' => $shippingCostsArray,
-                'variation' => $variation
-        ]);
+            $this->propertyRelationRepositoryContract->setFilters([
+                'type' => 'item',
+                'targetId' => $variation['id'],
+                'propertyId' => $propertyID
+            ]);
+
+            $propertyRelations = $this->propertyRelationRepositoryContract->search();
+
+            $this->getLogger('getShippingCosts')
+                ->addReference('variationId', (int)$variation['id'])
+                ->error('ElasticExportGoogleShopping::Debug.getShippingCosts', [
+                    'propertyRelations' => $propertyRelations
+                ]);
+        }
+
 
         return $shippingCosts;
     }
