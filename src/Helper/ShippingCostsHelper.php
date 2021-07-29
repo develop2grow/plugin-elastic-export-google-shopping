@@ -76,7 +76,7 @@ class ShippingCostsHelper
             foreach($propertyRelations as $propertyRelation){
                 if($propertyRelation->propertyId == $propertyID && $propertyRelation->targetId == $variation['id']){
                     if(!empty($propertyRelation->value)){
-                        $shippingCosts = $propertyRelation->value;
+                        $shippingCosts = $country->isoCode2.':::'.$propertyRelation->value.' EUR';
                     }
                 }
             }
