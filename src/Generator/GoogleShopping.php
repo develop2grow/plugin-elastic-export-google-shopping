@@ -319,7 +319,26 @@ class GoogleShopping extends CSVPluginGenerator
         	$salePrice = '';
 		}
 
-        $shipping = $this->shippingCostsHelper->getShippingCosts($variation, $settings);
+        //$shipping = $this->shippingCostsHelper->getShippingCosts($variation, $settings);
+        $shippingCost = $this->elasticExportHelper->getShippingCost($variation['data']['item']['id'], $settings);
+
+        if(!is_null($shippingCost))
+        {
+            $shippingCost = number_format((float)$shippingCost, 2, '.', '').' '. $this->priceDetectionService->getCurrency();
+        }
+        else
+        {
+            $shippingCost = '';
+        }
+
+        if(strlen($shippingCost) == 0)
+        {
+            $shipping = '';
+        }
+        else
+        {
+            $shipping = $this->elasticExportHelper->getCountry($settings, self::ISO_CODE_2).':::'.$shippingCost;
+        }
 
         $basePriceComponents = $this->priceHelper->getBasePriceComponents($variation);
 
