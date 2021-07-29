@@ -5,6 +5,7 @@ namespace ElasticExportGoogleShopping\Helper;
 use Plenty\Modules\Helper\Models\KeyValue;
 use Plenty\Modules\Order\Shipping\Countries\Contracts\CountryRepositoryContract;
 use Plenty\Modules\Property\V2\Contracts\PropertyRelationRepositoryContract;
+use Plenty\Modules\Property\V2\Models\PropertyRelation;
 use Plenty\Plugin\Log\Loggable;
 
 class ShippingCostsHelper
@@ -70,6 +71,15 @@ class ShippingCostsHelper
             ]);
 
             $propertyRelations = $this->propertyRelationRepositoryContract->search();
+
+            /** @var PropertyRelation $propertyRelation */
+            foreach($propertyRelations as $propertyRelation){
+                if($propertyRelation->propertyId == $propertyID && $propertyRelation->targetId == $variation['id']){
+                    if(!empty($propertyRelation->value)){
+                        $shippingCosts = $propertyRelation->value;
+                    }
+                }
+            }
 
             $this->getLogger('getShippingCosts')
                 ->addReference('variationId', (int)$variation['id'])
