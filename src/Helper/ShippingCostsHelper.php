@@ -83,7 +83,7 @@ class ShippingCostsHelper
 
             $this->getLogger('getShippingCosts')
                 ->addReference('variationId', (int)$variation['id'])
-                ->error('ElasticExportGoogleShopping::Debug.getShippingCosts', [
+                ->debug('ElasticExportGoogleShopping::Debug.getShippingCosts', [
                     'propertyRelations' => $propertyRelations
                 ]);
         }
